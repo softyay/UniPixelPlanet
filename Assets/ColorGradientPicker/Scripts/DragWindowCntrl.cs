@@ -1,10 +1,35 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
+// Fully rewritten
+[RequireComponent(typeof(RectTransform))]
 public class DragWindowCntrl : MonoBehaviour
 {
+    public Action<bool> DragEvent;
+
+    private static List< Action<bool> > dragEvents = new();
+
     private RectTransform window;
-    //delta drag
-    private Vector2 delta;
+
+    private Vector3 windowOffsetFromMouse;
+
+    private Vector3 mousePosScreenSpace
+    {
+        get
+        {
+            return Input.mousePosition;
+        }
+    }
+
+    private Vector3 windowPosScreenSpace
+    {
+        get
+        {
+            return Camera.main.WorldToScreenPoint(window.position);
+        }
+    }
+
 
     private void Awake()
     {
@@ -13,33 +38,60 @@ public class DragWindowCntrl : MonoBehaviour
 
     public void BeginDrag()
     {
-        delta = Input.mousePosition - window.position;
+        windowOffsetFromMouse = mousePosScreenSpace - windowPosScreenSpace;
+
+        PerformActions(true);
     }
+
     public void Drag()
     {
-        Vector2 newPos = (Vector2)Input.mousePosition - delta;
-        Vector2 Transform = new Vector2(window.rect.width * transform.root.lossyScale.x, window.rect.height * transform.root.lossyScale.y);
-        Vector2 OffsetMin, OffsetMax;
-        OffsetMin.x = newPos.x - window.pivot.x * Transform.x;
-        OffsetMin.y = newPos.y - window.pivot.y * Transform.y;
-        OffsetMax.x = newPos.x + (1 - window.pivot.x) * Transform.x;
-        OffsetMax.y = newPos.y + (1 - window.pivot.y) * Transform.y;
-        if (OffsetMin.x < 0)
+        Vector3 newPosScreenSpace = mousePosScreenSpace - windowOffsetFromMouse;
+
+        Vector3 newPosWorldSpace = Camera.main.ScreenToWorldPoint(newPosScreenSpace);
+
+        window.SetPositionAndRotation(newPosWorldSpace, window.rotation);
+    }
+
+    public void EndDrag()
+    {
+        PerformActions(false);
+    }
+
+    public void Subscribe(Action<bool> onDrag)
+    {
+        dragEvents.Add(onDrag);
+    }
+
+    public void Unsubscribe(Action<bool> onDrag)
+    {
+        if (!dragEvents.Contains(onDrag)) { return; }
+
+        dragEvents.Remove(onDrag);
+    }
+
+    private void PerformActions(bool dragIsBeginning)
+    {
+        List<int> badIndices = new();
+
+        for (int i = 0; i < dragEvents.Count; i++)
         {
-            newPos.x = window.pivot.x * Transform.x;
+            if (dragEvents[i] == null)
+            {
+                badIndices.Add(i);
+                continue;
+            }
+
+            dragEvents[i].Invoke(dragIsBeginning);
         }
-        else if (OffsetMax.x > Screen.width)
+
+        CleanUp(badIndices);
+    }
+
+    private void CleanUp(List<int> badIndices)
+    {
+        foreach (int index in badIndices)
         {
-            newPos.x = Screen.width - (1 - window.pivot.x) * Transform.x;
+            dragEvents.RemoveAt(index);
         }
-        if (OffsetMin.y < 0)
-        {
-            newPos.y = window.pivot.y * Transform.y;
-        }
-        else if (OffsetMax.y > Screen.height)
-        {
-            newPos.y = Screen.height - (1 - window.pivot.y) * Transform.y;
-        }
-        window.position = newPos;
     }
 }

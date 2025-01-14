@@ -28,6 +28,11 @@ public class PlanetControl : MonoBehaviour {
     private float pixels = 100;
     private int seed = 0;
     private bool override_time = false;
+
+    // mod ===
+    private bool override_drag = false;
+    // =======
+
     private List<Color> colors = new List<Color>();
     private List<GameObject> colorBtns = new List<GameObject>();
     private int selectedColorButtonID = 0;
@@ -45,7 +50,7 @@ public class PlanetControl : MonoBehaviour {
     {
         selectedColorButton = EventSystem.current.currentSelectedGameObject;
         selectedColorButtonID = EventSystem.current.currentSelectedGameObject.GetComponent<ColorChooserButton>().ButtonID;
-        ColorPicker.Create(colors[selectedColorButtonID], "Choose color", onColorChanged, onColorSelected, false);
+        ColorPicker.Create(colors[selectedColorButtonID], "Choose color", onColorChanged, onColorSelected, /*mod*/ onDragWindow, false);
     }
 
     private void onColorChanged(Color currentColor)
@@ -59,6 +64,12 @@ public class PlanetControl : MonoBehaviour {
         colors[selectedColorButtonID] = finishedColor;
         SetColor();
     }
+
+    private void onDragWindow(bool begin)
+    {
+        override_drag = begin;
+    }
+
     private void MakeColorButtons()
     {
         for (int i = 0; i < colors.Count; i++)
@@ -173,6 +184,12 @@ public class PlanetControl : MonoBehaviour {
         if (result.Count(x => x.gameObject.GetComponent<Selectable>()) > 0) {
             return true;
         }
+
+        // mod ===
+        if (override_drag) {
+            return true;
+        }
+        // =======
 
         return false;
     }

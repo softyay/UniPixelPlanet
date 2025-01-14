@@ -20,6 +20,10 @@ public class ColorPicker : MonoBehaviour
     //onColorSelected event
     private static ColorEvent onCS;
 
+    // mod ===
+    private static Action<bool> onDragEvent;
+    // =======
+
     //Color before editing
     private static Color32 originalColor;
     //current Color
@@ -33,6 +37,7 @@ public class ColorPicker : MonoBehaviour
 
     // these can only work with the prefab and its children
     public RectTransform positionIndicator;
+    public DragWindowCntrl windowControl;
     public Slider mainComponent;
     public Slider rComponent;
     public Slider gComponent;
@@ -59,7 +64,7 @@ public class ColorPicker : MonoBehaviour
     /// <returns>
     /// False if the instance is already running
     /// </returns>
-    public static bool Create(Color original, string message, ColorEvent onColorChanged, ColorEvent onColorSelected, bool useAlpha = false)
+    public static bool Create(Color original, string message, ColorEvent onColorChanged, ColorEvent onColorSelected, /*mod*/ Action<bool> onDragWindow, bool useAlpha = false)
     {   
         if(instance is null)
         {
@@ -75,6 +80,12 @@ public class ColorPicker : MonoBehaviour
             onCS = onColorSelected;
             useA = useAlpha;
             instance.gameObject.SetActive(true);
+
+            // mod ===
+            instance.windowControl = instance.GetComponentInChildren<DragWindowCntrl>();
+            instance.windowControl.Subscribe(onDragWindow);
+            // =======
+
             instance.transform.GetChild(0).GetChild(0).GetComponent<Text>().text = message;
             instance.aComponent.gameObject.SetActive(useAlpha);
             instance.RecalculateMenu(true);
@@ -268,6 +279,7 @@ public class ColorPicker : MonoBehaviour
         done = true;
         onCC?.Invoke(modifiedColor);
         onCS?.Invoke(modifiedColor);
+        instance.windowControl.Unsubscribe(onDragEvent);
         instance.transform.gameObject.SetActive(false);
     }
     //HSV helper class
